@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ site.name }}{% if site.subtitle %} - {{ site.subtitle }}{% endif %}</title>
+    <link rel="stylesheet" href="static/css/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <!-- Header with Title -->
+        <header class="header">
+            <div class="header-content">
+                <h1 class="title">
+                    <span class="aurora-icon">🌌</span>
+                    {{ site.name }}
+                </h1>
+                <p class="subtitle">{{ site.subtitle }}</p>
+            </div>
+        </header>
+
+        <!-- Current Weather Conditions -->
+        <section class="weather-section">
+            <div class="weather-header">
+                <h2>
+                    <img src="static/images/space-weather-sun.svg" alt="Space Weather Sun" class="weather-icon-svg">
+                    Current Space Weather
+                </h2>
+                <span class="last-updated">Last updated: {{ weather_data.last_updated | format_datetime }}</span>
+            </div>
+
+            <div class="weather-grid">
+                <div class="weather-card current">
+                    <h3>Current Conditions</h3>
+                    <div class="weather-data">
+                        <div class="weather-item">
+                            <span class="label">Kp Index:</span>
+                            <span class="value {% if weather_data.current.kp_index and weather_data.current.kp_index >= 5 %}high{% elif weather_data.current.kp_index and weather_data.current.kp_index >= 3 %}moderate{% else %}low{% endif %}">
+                                {% if weather_data.current.kp_index %}
+                                    {{ weather_data.current.kp_index | round(1) }}
+                                {% else %}
+                                    N/A
+                                {% endif %}
+                            </span>
+                        </div>
+                        <div class="weather-item">
+                            <span class="label">G Scale:</span>
+                            <span class="value {% if weather_data.current.g_scale and weather_data.current.g_scale.level in ['G4', 'G5'] %}high{% elif weather_data.current.g_scale and weather_data.current.g_scale.level in ['G2', 'G3'] %}moderate{% elif weather_data.current.g_scale and weather_data.current.g_scale.level == 'G1' %}low{% else %}inactive{% endif %}">
+                                {% if weather_data.current.g_scale %}
+                                    {{ weather_data.current.g_scale.level }}
+                                    {% if weather_data.current.kp_index %}
+                                        (Kp {{ weather_data.current.kp_index | round(1) }})
+                                    {% endif %}
+                                {% else %}
+                                    G0
+                                {% endif %}
+                            </span>
+                        </div>
+                        <div class="weather-item">
+                            <span class="label">Storm:</span>
+                            <span class="value {% if weather_data.current.g_scale and weather_data.current.g_scale.level in ['G4', 'G5'] %}high{% elif weather_data.current.g_scale and weather_data.current.g_scale.level in ['G2', 'G3'] %}moderate{% elif weather_data.current.g_scale and weather_data.current.g_scale.level == 'G1' %}low{% else %}inactive{% endif %}">
+                                {% if weather_data.current.g_scale %}
+                                    {{ weather_data.current.g_scale.description }}
+                                {% else %}
+                                    No storm activity
+                                {% endif %}
+                            </span>
+                        </div>
+                        <div class="weather-item">
+                            <span class="label">Aurora:</span>
+                            <span class="value aurora-text">{{ weather_data.current.aurora_activity }}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="weather-card forecast">
+                    <h3>3-Day Peak Kp Forecast</h3>
+                    <div class="forecast-days">
+                        {% for day in weather_data.forecast %}
+                        <div class="forecast-day">
+                            <div class="day-name">{{ day.day }}</div>
+                            <div class="day-date">{{ day.date }}</div>
+                            <div class="day-kp {% if day.kp_forecast %}
+                                {% set kp_value = day.kp_forecast.replace('Kp ', '') | float %}
+                                {% if kp_value >= 5 %}high{% elif kp_value >= 3 %}moderate{% else %}low{% endif %}
+                                {% endif %}">{{ day.kp_forecast or 'N/A' }}</div>
+                            <div class="day-chance">{{ day.aurora_chance }}</div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Current Snapshot -->
+        {% if snapshot %}
+        <section class="snapshot-section">
+            <div class="snapshot-container">
+                <h2>
+                    <span class="camera-icon">⛅</span>
+                    Current Sky View
+                </h2>
+                <div class="snapshot-image">
+                    <img src="{{ snapshot.path.name }}" alt="Current sky snapshot" loading="lazy">
+                    <div class="snapshot-time">
+                        Updated: {{ snapshot.file_date | format_datetime }}
+                    </div>
+                </div>
+
+                <!-- Sun Information -->
+                {% if weather_data.sun_times and (weather_data.sun_times.sunrise or weather_data.sun_times.sunset or weather_data.sun_times.civil_dusk or weather_data.sun_times.civil_dawn_tomorrow or weather_data.sun_times.nautical_dusk or weather_data.sun_times.nautical_dawn_tomorrow or weather_data.sun_times.astronomical_dusk or weather_data.sun_times.astronomical_dawn_tomorrow) %}
+                <div class="sky-info-section">
+                    <h3>
+                        <span class="sun-icon">☀️</span>
+                        Sun
+                    </h3>
+                    <div class="sky-info-grid">
+                        <!-- Sunrise and Sunset -->
+                        {% if weather_data.sun_times.sunrise and weather_data.sun_times.sunset %}
+                        <div class="sky-info-item">
+                            <div class="sky-info-header">
+                                <span class="sky-info-icon">🌅</span>
+                                <div class="sky-info-content">
+                                    <span class="sky-info-label">Daylight Hours</span>
+                                    <div class="sky-info-times">
+                                        <div class="sky-info-time" data-prefix="Rise:">{{ weather_data.sun_times.sunrise | format_datetime }}</div>
+                                        <div class="sky-info-time" data-prefix="Set:">{{ weather_data.sun_times.sunset | format_datetime }}</div>
+                                        {% if weather_data.sun_times.day_duration %}
+                                        <div class="sky-info-time" data-prefix="Day:">{{ weather_data.sun_times.day_duration }}</div>
+                                        {% endif %}
+                                        {% if weather_data.sun_times.night_duration %}
+                                        <div class="sky-info-time" data-prefix="Night:">{{ weather_data.sun_times.night_duration }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        <!-- Civil Twilight -->
+                        {% if weather_data.sun_times.civil_dusk or weather_data.sun_times.civil_dawn_tomorrow %}
+                        <div class="sky-info-item">
+                            <div class="sky-info-header">
+                                <span class="sky-info-icon">🌆</span>
+                                <div class="sky-info-content">
+                                    <span class="sky-info-label">Civil Twilight</span>
+                                    <div class="sky-info-times">
+                                        {% if weather_data.sun_times.civil_dusk %}
+                                        <div class="sky-info-time" data-prefix="Start:">{{ weather_data.sun_times.civil_dusk | format_datetime }}</div>
+                                        {% endif %}
+                                        {% if weather_data.sun_times.civil_dawn_tomorrow %}
+                                        <div class="sky-info-time" data-prefix="End:">{{ weather_data.sun_times.civil_dawn_tomorrow | format_datetime }}</div>
+                                        {% endif %}
+                                    </div>
+                                    <span class="sky-info-desc">6° below horizon</span>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        <!-- Nautical Twilight -->
+                        {% if weather_data.sun_times.nautical_dusk or weather_data.sun_times.nautical_dawn_tomorrow %}
+                        <div class="sky-info-item">
+                            <div class="sky-info-header">
+                                <span class="sky-info-icon">⛵</span>
+                                <div class="sky-info-content">
+                                    <span class="sky-info-label">Nautical Twilight</span>
+                                    <div class="sky-info-times">
+                                        {% if weather_data.sun_times.nautical_dusk %}
+                                        <div class="sky-info-time" data-prefix="Start:">{{ weather_data.sun_times.nautical_dusk | format_datetime }}</div>
+                                        {% endif %}
+                                        {% if weather_data.sun_times.nautical_dawn_tomorrow %}
+                                        <div class="sky-info-time" data-prefix="End:">{{ weather_data.sun_times.nautical_dawn_tomorrow | format_datetime }}</div>
+                                        {% endif %}
+                                    </div>
+                                    <span class="sky-info-desc">12° below horizon</span>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        <!-- Astronomical Twilight -->
+                        {% if weather_data.sun_times.astronomical_dusk or weather_data.sun_times.astronomical_dawn_tomorrow %}
+                        <div class="sky-info-item">
+                            <div class="sky-info-header">
+                                <span class="sky-info-icon">✨</span>
+                                <div class="sky-info-content">
+                                    <span class="sky-info-label">Astronomical Twilight</span>
+                                    <div class="sky-info-times">
+                                        {% if weather_data.sun_times.astronomical_dusk %}
+                                        <div class="sky-info-time" data-prefix="Start:">{{ weather_data.sun_times.astronomical_dusk | format_datetime }}</div>
+                                        {% endif %}
+                                        {% if weather_data.sun_times.astronomical_dawn_tomorrow %}
+                                        <div class="sky-info-time" data-prefix="End:">{{ weather_data.sun_times.astronomical_dawn_tomorrow | format_datetime }}</div>
+                                        {% endif %}
+                                    </div>
+                                    <span class="sky-info-desc">18° below horizon</span>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% if weather_data.sun_times.location %}
+                    <div class="sky-info-footer">
+                        {{ weather_data.sun_times.location }}{% if weather_data.sun_times.method %} ({{ weather_data.sun_times.method }}){% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+                {% endif %}
+
+                <!-- Moon Information -->
+                {% if weather_data.moon_data and (weather_data.moon_data.moonrise or weather_data.moon_data.moonset or weather_data.moon_data.phase_name) %}
+                <div class="sky-info-section">
+                    <h3>
+                        <span class="moon-icon">🌙</span>
+                        Moon
+                    </h3>
+                    <div class="sky-info-grid">
+                        {% if weather_data.moon_data.moonrise %}
+                        <div class="sky-info-item">
+                            <div class="sky-info-header">
+                                <span class="sky-info-icon moonrise-icon" title="Moon rising above horizon"></span>
+                                <div class="sky-info-content">
+                                    <span class="sky-info-label">Moonrise</span>
+                                    <div class="sky-info-times">
+                                        <span class="sky-info-time moon-time">{{ weather_data.moon_data.moonrise | format_datetime }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        {% if weather_data.moon_data.moonset %}
+                        <div class="sky-info-item">
+                            <div class="sky-info-header">
+                                <span class="sky-info-icon moonset-icon" title="Moon setting below horizon"></span>
+                                <div class="sky-info-content">
+                                    <span class="sky-info-label">Moonset</span>
+                                    <div class="sky-info-times">
+                                        <span class="sky-info-time moon-time">{{ weather_data.moon_data.moonset | format_datetime }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        {% if weather_data.moon_data.phase_name %}
+                        <div class="sky-info-item">
+                            <div class="sky-info-header">
+                                <span class="sky-info-icon" id="moon-phase-icon">🌒</span>
+                                <div class="sky-info-content">
+                                    <span class="sky-info-label">Moon Phase</span>
+                                    <span class="sky-info-phase">{{ weather_data.moon_data.phase_name }} ({{ weather_data.moon_data.phase_percentage }}%)</span>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% if weather_data.moon_data.location %}
+                    <div class="sky-info-footer">
+                        {{ weather_data.moon_data.location }}{% if weather_data.moon_data.method %} ({{ weather_data.moon_data.method }}){% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+                {% endif %}
+
+                <!-- Atmospheric Weather Forecast -->
+                {% if weather_data.atmospheric and weather_data.atmospheric.forecast %}
+                <div class="atmospheric-weather">
+                    <h3>
+                        <span class="weather-icon">🌤️</span>
+                        Weather Forecast
+                    </h3>
+                    <div class="weather-forecast">
+                        {% for day in weather_data.atmospheric.forecast %}
+                        <div class="weather-day {% if day.day == 'Today' %}today{% endif %}">
+                            <div class="weather-day-header">
+                                <span class="weather-day-name">{{ day.day }}</span>
+                                <span class="weather-day-date">{{ day.date }}</span>
+                            </div>
+                            <div class="weather-day-content">
+                                {% if day.high_temp and day.low_temp %}
+                                <div class="weather-temps">
+                                    <span class="weather-temp-high">{{ day.high_temp }}°</span>
+                                    <span class="weather-temp-low">{{ day.low_temp }}°</span>
+                                </div>
+                                {% else %}
+                                <div class="weather-no-data">{{ day.condition }}</div>
+                                {% endif %}
+                                {% if day.icon %}
+                                <div class="weather-icon">{{ day.icon }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <div class="weather-source">
+                        {{ weather_data.atmospheric.source }}
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Clear Sky Chart -->
+                {% if weather_data.clearsky_chart %}
+                <div class="clearsky-chart">
+                    <h3>
+                        <span class="chart-icon">🌌</span>
+                        Clear Sky Chart
+                    </h3>
+                    <div class="chart-container">
+                        <img src="{% if weather_data.clearsky_chart.local_path %}{{ weather_data.clearsky_chart.local_path }}{% else %}{{ weather_data.clearsky_chart.url }}{% endif %}"
+                             alt="{{ weather_data.clearsky_chart.alt }}"
+                             title="{{ weather_data.clearsky_chart.title }}">
+                        <div class="chart-info">
+                            <span class="chart-title">{{ weather_data.clearsky_chart.title }}</span>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </section>
+        {% endif %}
+
+        <!-- 7-Day Archive -->
+        <section class="archive-section">
+            <div class="archive-header">
+                <h2>
+                    <span class="archive-icon">📅</span>
+                    7-Day Archive
+                </h2>
+                <p>Day & Night Timelapses</p>
+            </div>
+
+            <div class="archive-grid">
+                {% for day in media_data %}
+                <div class="day-card">
+                    <div class="day-header">
+                        <h3 class="day-name">{{ day.day_name }}</h3>
+                        <div class="day-date">{{ day.date | format_date }}</div>
+                    </div>
+
+                    <div class="media-grid">
+                        <!-- Aurora Video -->
+                        {% if day.aurora_video %}
+                        <div class="media-item aurora">
+                            <div class="media-header">
+                                <span class="media-icon">🌌</span>
+                                <h4>Night Timelapse</h4>
+                            </div>
+                            <div class="video-container">
+                                <video controls preload="metadata" poster="{{ day.aurora_video.path.name }}#t=0.5">
+                                    <source src="{{ day.aurora_video.path.name }}" type="video/mp4">
+                                    Your browser does not support the video tag.
+                                </video>
+                            </div>
+                            <div class="media-info">
+                                <span class="file-size">{{ day.aurora_video.size | format_file_size }}</span>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        <!-- Cloud Video -->
+                        {% if day.cloud_video %}
+                        <div class="media-item cloud">
+                            <div class="media-header">
+                                <span class="media-icon">☁️</span>
+                                <h4>Day Timelapse</h4>
+                            </div>
+                            <div class="video-container">
+                                <video controls preload="metadata" poster="{{ day.cloud_video.path.name }}#t=0.5">
+                                    <source src="{{ day.cloud_video.path.name }}" type="video/mp4">
+                                    Your browser does not support the video tag.
+                                </video>
+                            </div>
+                            <div class="media-info">
+                                <span class="file-size">{{ day.cloud_video.size | format_file_size }}</span>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        <!-- Space Weather History -->
+                        {% if day.spaceweather_image %}
+                        <div class="media-item spaceweather">
+                            <div class="media-header">
+                                <span class="media-icon">🛰️</span>
+                                <h4>Space Weather History</h4>
+                            </div>
+                            <div class="image-container">
+                                <img src="{{ day.spaceweather_image.path.name }}"
+                                     alt="Space weather history for {{ day.day_name }}"
+                                     loading="lazy"
+                                     class="modal-trigger"
+                                     data-src="{{ day.spaceweather_image.path.name }}"
+                                     data-alt="Space weather history for {{ day.day_name }}">
+                            </div>
+                            <div class="media-info">
+                                <span class="file-size">{{ day.spaceweather_image.size | format_file_size }}</span>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <div class="footer-content">
+                <p>&copy; {{ current_year }} Gilman Skywatch Archive</p>
+                <p>Space Weather Data: {{ weather_data.source }}</p>
+                <p>
+                    <a href="https://www.swpc.noaa.gov/" target="_blank" rel="noopener noreferrer">
+                        NOAA Space Weather Prediction Center
+                    </a>
+                </p>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Image Modal -->
+    <div id="imageModal" class="modal">
+        <div class="modal-content">
+            <span class="modal-close">&times;</span>
+            <img class="modal-image" src="" alt="">
+            <div class="modal-caption"></div>
+        </div>
+    </div>
+
+    <script src="static/js/scripts.js"></script>
+</body>
+</html>
