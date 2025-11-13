@@ -21,6 +21,7 @@ class MediaFile:
     day: str   # 'Monday', 'Tuesday', etc.
     file_date: datetime
     size: int
+    thumbnail_path: Optional[Path] = None  # Path to thumbnail image if available
 
 @dataclass
 class DayMedia:
@@ -40,6 +41,11 @@ class FileProcessor:
     def __init__(self, target_directory: Path):
         self.target_directory = Path(target_directory)
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
+
+        # Set up placeholder image paths (relative to project root)
+        self.project_root = Path(__file__).parent.parent
+        self.placeholder_day = self.project_root / "static" / "images" / "placeholder-day.jpg"
+        self.placeholder_night = self.project_root / "static" / "images" / "placeholder-night.jpg"
 
     def _get_file_date(self, file_path: Path) -> datetime:
         """Get the file modification date in UTC."""
@@ -83,6 +89,29 @@ class FileProcessor:
 
         return None
 
+    def _find_thumbnail_file(self, video_file: Path) -> Optional[Path]:
+        """Find thumbnail file for a video file."""
+        # Look for .thumbnail.jpg with same basename as video
+        thumbnail_name = f"{video_file.stem}.thumbnail.jpg"
+        thumbnail_path = self.target_directory / thumbnail_name
+
+        if thumbnail_path.exists() and thumbnail_path.is_file():
+            self.logger.debug(f"Found thumbnail: {thumbnail_path}")
+            return thumbnail_path
+
+        return None
+
+    def _get_placeholder_path(self, media_type: str) -> Optional[Path]:
+        """Get placeholder image path based on media type."""
+        if media_type == 'aurora':
+            # Aurora videos are typically night scenes
+            return self.placeholder_night if self.placeholder_night.exists() else None
+        elif media_type == 'cloud':
+            # Cloud videos are typically day scenes
+            return self.placeholder_day if self.placeholder_day.exists() else None
+
+        return None
+
     def _scan_files(self) -> List[MediaFile]:
         """Scan directory for media files."""
         media_files = []
@@ -100,15 +129,28 @@ class FileProcessor:
                     day = self._parse_day_from_filename(filename) if file_type != 'snapshot' else None
                     size = file_path.stat().st_size
 
+                    # Find thumbnail for video files
+                    thumbnail_path = None
+                    if file_type in ['aurora', 'cloud']:
+                        # Look for existing thumbnail file
+                        thumbnail_path = self._find_thumbnail_file(file_path)
+
+                        # If no thumbnail found, use placeholder
+                        if not thumbnail_path:
+                            thumbnail_path = self._get_placeholder_path(file_type)
+                            if thumbnail_path:
+                                self.logger.debug(f"Using placeholder for {file_type} file: {filename}")
+
                     media_file = MediaFile(
                         path=file_path,
                         type=file_type,
                         day=day,
                         file_date=file_date,
-                        size=size
+                        size=size,
+                        thumbnail_path=thumbnail_path
                     )
                     media_files.append(media_file)
-                    self.logger.debug(f"Found {file_type} file: {filename}")
+                    self.logger.debug(f"Found {file_type} file: {filename} (thumbnail: {'Yes' if thumbnail_path else 'No'})")
 
         except OSError as e:
             self.logger.error(f"Error scanning directory {self.target_directory}: {e}")
@@ -158,6 +200,14 @@ class FileProcessor:
 
         return [day_media for _, day_media in day_items]
 
+    def _get_relative_path(self, file_path: Path) -> Path:
+        """Get path relative to target directory for template usage."""
+        try:
+            return file_path.relative_to(self.target_directory)
+        except ValueError:
+            # If file is not under target directory, return just the filename
+            return Path(file_path.name)
+
     def process_files(self) -> Tuple[List[DayMedia], Optional[MediaFile]]:
         """
         Process all media files in the target directory.
@@ -182,6 +232,24 @@ class FileProcessor:
 
         # Sort days by recency
         sorted_days = self._sort_days_by_recency(days_media)
+
+        # Convert thumbnail paths to relative paths for template usage
+        for day_media in sorted_days:
+            for media_attr in ['aurora_video', 'cloud_video', 'spaceweather_image']:
+                media_file = getattr(day_media, media_attr, None)
+                if media_file and media_file.thumbnail_path:
+                    # Check if this is a placeholder image (in static/images)
+                    if media_file.thumbnail_path.is_absolute():
+                        # This is a placeholder image - convert to relative path from project root
+                        try:
+                            relative_to_project = media_file.thumbnail_path.relative_to(self.project_root)
+                            media_file.thumbnail_path = relative_to_project
+                        except ValueError:
+                            # If that fails, use the filename as fallback
+                            media_file.thumbnail_path = Path(media_file.thumbnail_path.name)
+                    else:
+                        # This is a thumbnail in the target directory
+                        media_file.thumbnail_path = self._get_relative_path(media_file.thumbnail_path)
 
         self.logger.info(f"Processed {len(sorted_days)} days of content")
 

@@ -1034,7 +1034,27 @@ body {
     border-radius: 5px;
 }
 
-/* Clickable image cursor */
+/* Play overlay for video thumbnails */
+.play-overlay {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
+    border-radius: 50%;
+    width: 60px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    pointer-events: none;
+    transition: background-color 0.2s ease, transform 0.2s ease;
+    z-index: 10;
+}
+
+/* Clickable image/video cursor */
 .modal-trigger {
     cursor: pointer;
     transition: transform 0.2s ease, box-shadow 0.2s ease;
@@ -1043,6 +1063,20 @@ body {
 .modal-trigger:hover {
     transform: scale(1.02);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.image-container:hover .play-overlay {
+    background: rgba(0, 0, 0, 0.85);
+    transform: translate(-50%, -50%) scale(1.1);
+}
+
+/* Video modal styling */
+.modal-video {
+    max-width: 100%;
+    max-height: 85%;
+    object-fit: contain;
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
 }
 
 /* Responsive Design */

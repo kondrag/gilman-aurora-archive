@@ -34,7 +34,7 @@
 
             <div class="weather-grid">
                 <div class="weather-card current">
-                    <h3>Current Conditions</h3>
+                    <h3>Latest Observations</h3>
                     <div class="weather-data">
                         <div class="weather-item">
                             <span class="label">Kp Index:</span>
@@ -350,11 +350,27 @@
                                 <span class="media-icon">🌌</span>
                                 <h4>Night Timelapse</h4>
                             </div>
-                            <div class="video-container">
-                                <video controls preload="metadata" poster="{{ day.aurora_video.path.name }}#t=0.5">
-                                    <source src="{{ day.aurora_video.path.name }}" type="video/mp4">
-                                    Your browser does not support the video tag.
-                                </video>
+                            <div class="image-container">
+                                {% if day.aurora_video.thumbnail_path %}
+                                <img src="{{ day.aurora_video.thumbnail_path }}"
+                                     alt="Night timelapse for {{ day.day_name }}"
+                                     loading="lazy"
+                                     class="modal-trigger"
+                                     data-type="video"
+                                     data-src="{{ day.aurora_video.path.name }}"
+                                     data-alt="Night timelapse for {{ day.day_name }}"
+                                     data-title="Night Timelapse - {{ day.day_name }}">
+                                {% else %}
+                                <img src="{{ day.aurora_video.path.name }}#t=0.5"
+                                     alt="Night timelapse for {{ day.day_name }}"
+                                     loading="lazy"
+                                     class="modal-trigger"
+                                     data-type="video"
+                                     data-src="{{ day.aurora_video.path.name }}"
+                                     data-alt="Night timelapse for {{ day.day_name }}"
+                                     data-title="Night Timelapse - {{ day.day_name }}">
+                                {% endif %}
+                                <div class="play-overlay">▶</div>
                             </div>
                             <div class="media-info">
                                 <span class="file-size">{{ day.aurora_video.size | format_file_size }}</span>
@@ -369,11 +385,27 @@
                                 <span class="media-icon">☁️</span>
                                 <h4>Day Timelapse</h4>
                             </div>
-                            <div class="video-container">
-                                <video controls preload="metadata" poster="{{ day.cloud_video.path.name }}#t=0.5">
-                                    <source src="{{ day.cloud_video.path.name }}" type="video/mp4">
-                                    Your browser does not support the video tag.
-                                </video>
+                            <div class="image-container">
+                                {% if day.cloud_video.thumbnail_path %}
+                                <img src="{{ day.cloud_video.thumbnail_path }}"
+                                     alt="Day timelapse for {{ day.day_name }}"
+                                     loading="lazy"
+                                     class="modal-trigger"
+                                     data-type="video"
+                                     data-src="{{ day.cloud_video.path.name }}"
+                                     data-alt="Day timelapse for {{ day.day_name }}"
+                                     data-title="Day Timelapse - {{ day.day_name }}">
+                                {% else %}
+                                <img src="{{ day.cloud_video.path.name }}#t=0.5"
+                                     alt="Day timelapse for {{ day.day_name }}"
+                                     loading="lazy"
+                                     class="modal-trigger"
+                                     data-type="video"
+                                     data-src="{{ day.cloud_video.path.name }}"
+                                     data-alt="Day timelapse for {{ day.day_name }}"
+                                     data-title="Day Timelapse - {{ day.day_name }}">
+                                {% endif %}
+                                <div class="play-overlay">▶</div>
                             </div>
                             <div class="media-info">
                                 <span class="file-size">{{ day.cloud_video.size | format_file_size }}</span>
@@ -393,8 +425,10 @@
                                      alt="Space weather history for {{ day.day_name }}"
                                      loading="lazy"
                                      class="modal-trigger"
+                                     data-type="image"
                                      data-src="{{ day.spaceweather_image.path.name }}"
-                                     data-alt="Space weather history for {{ day.day_name }}">
+                                     data-alt="Space weather history for {{ day.day_name }}"
+                                     data-title="Space Weather History - {{ day.day_name }}">
                             </div>
                             <div class="media-info">
                                 <span class="file-size">{{ day.spaceweather_image.size | format_file_size }}</span>
