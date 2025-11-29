@@ -58,7 +58,9 @@ class HTMLGenerator:
                     local_dt = dt.astimezone(gilman_tz)
 
                 # Format without timezone indicator since it's local time
-                return local_dt.strftime('%Y-%m-%d %I:%M %p').lstrip('0')
+                time_str = local_dt.strftime('%b %d, %I:%M %p')
+                # Remove leading zero from hour (e.g., "06:59 AM" -> "6:59 AM")
+                return time_str.replace(' 0', ' ')
             except (ValueError, AttributeError):
                 return str(dt_str) if dt_str else "Unknown"
 
@@ -95,16 +97,99 @@ class HTMLGenerator:
                 return text
             return text[:length] + "..."
 
+        def cache_buster_filter(media_file) -> str:
+            """Add cache-busting parameter to media file URLs."""
+            if not media_file or not hasattr(media_file, 'file_date'):
+                if hasattr(media_file, 'path') and hasattr(media_file.path, 'name'):
+                    return media_file.path.name
+                elif hasattr(media_file, 'path'):
+                    return str(media_file.path)
+                else:
+                    return ""
+
+            # Use file modification timestamp as cache buster
+            cache_bust = int(media_file.file_date.timestamp())
+            if hasattr(media_file.path, 'name'):
+                return f"{media_file.path.name}?v={cache_bust}"
+            else:
+                return f"{media_file.path}?v={cache_bust}"
+
+        def get_moon_phase_icon(phase_decimal: float = None, phase_name: str = None) -> str:
+            """Get Unicode moon phase icon based on phase decimal or phase name."""
+            if phase_decimal is not None:
+                # Use phase_decimal (0-1) where 0 is new moon, 0.5 is full moon
+                phase = phase_decimal % 1.0  # Normalize to 0-1 range
+                if phase < 0.03 or phase > 0.97:
+                    return "🌑"  # New Moon
+                elif phase < 0.22:
+                    return "🌒"  # Waxing Crescent
+                elif phase < 0.28:
+                    return "🌓"  # First Quarter
+                elif phase < 0.47:
+                    return "🌔"  # Waxing Gibbous
+                elif phase < 0.53:
+                    return "🌕"  # Full Moon
+                elif phase < 0.72:
+                    return "🌖"  # Waning Gibbous
+                elif phase < 0.78:
+                    return "🌗"  # Last Quarter
+                else:
+                    return "🌘"  # Waning Crescent
+            elif phase_name:
+                # Fallback to phase name matching
+                phase_name_lower = phase_name.lower()
+                if "new" in phase_name_lower:
+                    return "🌑"  # New Moon
+                elif "waxing crescent" in phase_name_lower:
+                    return "🌒"  # Waxing Crescent
+                elif "first quarter" in phase_name_lower:
+                    return "🌓"  # First Quarter
+                elif "waxing gibbous" in phase_name_lower:
+                    return "🌔"  # Waxing Gibbous
+                elif "full" in phase_name_lower:
+                    return "🌕"  # Full Moon
+                elif "waning gibbous" in phase_name_lower:
+                    return "🌖"  # Waning Gibbous
+                elif "last quarter" in phase_name_lower:
+                    return "🌗"  # Last Quarter
+                elif "waning crescent" in phase_name_lower:
+                    return "🌘"  # Waning Crescent
+                else:
+                    return "🌙"  # Default crescent moon
+            else:
+                return "🌙"  # Default crescent moon
+
         # Register filters
         self.env.filters['format_datetime'] = format_datetime_filter
         self.env.filters['format_date'] = format_date_filter
         self.env.filters['format_file_size'] = format_file_size_filter
         self.env.filters['round'] = round_filter
         self.env.filters['truncate'] = safe_truncate
+        self.env.filters['cache_bust'] = cache_buster_filter
+        self.env.filters['moon_phase_icon'] = get_moon_phase_icon
+
+        # Store reference for use in template data
+        self.get_moon_phase_icon = get_moon_phase_icon
 
     def _prepare_template_data(self, media_data: List[DayMedia], weather_data: Dict[str, Any],
                               snapshot: Optional[MediaFile] = None) -> Dict[str, Any]:
         """Prepare data for template rendering."""
+
+        # Add moon phase icon to weather data if moon data is available
+        if weather_data.get('moon_data'):
+            moon_data = weather_data['moon_data']
+            if moon_data.get('phase_decimal') is not None:
+                moon_data['phase_icon'] = self.get_moon_phase_icon(
+                    phase_decimal=moon_data['phase_decimal'],
+                    phase_name=moon_data.get('phase_name')
+                )
+            elif moon_data.get('phase_name'):
+                moon_data['phase_icon'] = self.get_moon_phase_icon(
+                    phase_name=moon_data['phase_name']
+                )
+            else:
+                moon_data['phase_icon'] = '🌙'  # Default crescent moon
+
         return {
             'media_data': media_data,
             'weather_data': weather_data,

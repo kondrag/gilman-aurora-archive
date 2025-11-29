@@ -115,6 +115,18 @@ class WeatherFetcher:
             nautical_tomorrow = sun(self.gilman_location.observer, date=tomorrow.date(), dawn_dusk_depression=Depression.NAUTICAL)
             astronomical_tomorrow = sun(self.gilman_location.observer, date=tomorrow.date(), dawn_dusk_depression=Depression.ASTRONOMICAL)
 
+            # Fix astronomical dusk if it's on the wrong day
+            # Astronomical dusk should always be after sunset on the same day
+            sunset_time = s['sunset']
+            astro_dusk = astronomical['dusk']
+
+            # If astronomical dusk is before sunset, it's actually from the previous day
+            # In that case, we need to add 24 hours to make it the correct dusk for today
+            if astro_dusk and sunset_time and astro_dusk < sunset_time:
+                # This astronomical dusk is from the previous day, add 24 hours
+                astro_dusk = astro_dusk + timedelta(days=1)
+                logger.info(f"Corrected astronomical dusk from previous day to: {astro_dusk}")
+
             # The times from astral are already timezone-aware (UTC for America/Chicago)
             # No need to convert them again
             return {
@@ -127,7 +139,7 @@ class WeatherFetcher:
                 'nautical_dusk': nautical['dusk'],
                 'nautical_dawn_tomorrow': nautical_tomorrow['dawn'],
                 'astronomical_dawn': astronomical['dawn'],
-                'astronomical_dusk': astronomical['dusk'],
+                'astronomical_dusk': astro_dusk,  # Use the corrected astronomical dusk
                 'astronomical_dawn_tomorrow': astronomical_tomorrow['dawn'],
                 'method': 'astral'
             }

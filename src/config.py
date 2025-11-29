@@ -1,5 +1,5 @@
 """
-Configuration management for Gilman Skywatch Archive.
+Configuration management for Aurora Skywatch Archive.
 """
 
 import os
@@ -48,14 +48,14 @@ class Config:
         """Get default configuration values."""
         return {
             "site": {
-                "name": "Gilman Skywatch Archive",
+                "name": "Aurora Skywatch Archive",
                 "subtitle": "Northern Lights & Sky Timelapse Observatory",
                 "description": "Static HTML website generator for Aurora timelapse archive",
-                "author": "Gilman Skywatch",
-                "email": "admin@gilman-skywatch.local"
+                "author": "Aurora Skywatch",
+                "email": "admin@aurora-skywatch.local"
             },
             "location": {
-                "name": "Gilman, Wisconsin",
+                "name": "Observatory Location",
                 "latitude": 45.17,
                 "longitude": -90.82,
                 "timezone": "America/Chicago"
@@ -72,7 +72,7 @@ class Config:
                 "clearsky": {
                     "base_url": "https://www.cleardarksky.com/c/",
                     "station": "LtBlrTsWIcsk.gif",
-                    "title": "Clear Sky Chart for Gilman, WI"
+                    "title": "Clear Sky Chart for Observatory Location"
                 }
             },
             "display": {
@@ -84,34 +84,34 @@ class Config:
             },
             "advanced": {
                 "request_timeout": 15,
-                "user_agent": "Gilman Skywatch Archive (Educational/Non-commercial; admin@gilman-skywatch.local)",
+                "user_agent": "Aurora Skywatch Archive (Educational/Non-commercial; admin@aurora-skywatch.local)",
                 "debug": False
             }
         }
 
     def _apply_env_overrides(self) -> None:
         """Apply environment variable overrides to configuration."""
-        # Map environment variables to config paths
+        # Map environment variables to config paths (generic naming)
         env_mappings = {
-            "GILMAN_SITE_NAME": ["site", "name"],
-            "GILMAN_SITE_SUBTITLE": ["site", "subtitle"],
-            "GILMAN_SITE_DESCRIPTION": ["site", "description"],
-            "GILMAN_SITE_AUTHOR": ["site", "author"],
-            "GILMAN_SITE_EMAIL": ["site", "email"],
+            "AURORA_SITE_NAME": ["site", "name"],
+            "AURORA_SITE_SUBTITLE": ["site", "subtitle"],
+            "AURORA_SITE_DESCRIPTION": ["site", "description"],
+            "AURORA_SITE_AUTHOR": ["site", "author"],
+            "AURORA_SITE_EMAIL": ["site", "email"],
 
-            "GILMAN_LOCATION_NAME": ["location", "name"],
-            "GILMAN_LOCATION_LATITUDE": ["location", "latitude"],
-            "GILMAN_LOCATION_LONGITUDE": ["location", "longitude"],
-            "GILMAN_LOCATION_TIMEZONE": ["location", "timezone"],
+            "AURORA_LOCATION_NAME": ["location", "name"],
+            "AURORA_LOCATION_LATITUDE": ["location", "latitude"],
+            "AURORA_LOCATION_LONGITUDE": ["location", "longitude"],
+            "AURORA_LOCATION_TIMEZONE": ["location", "timezone"],
 
-            "GILMAN_API_KEYS_OPENWEATHERMAP": ["api_keys", "openweathermap"],
+            "AURORA_API_KEYS_OPENWEATHERMAP": ["api_keys", "openweathermap"],
 
-            "GILMAN_DISPLAY_FORECAST_DAYS": ["display", "forecast_days"],
-            "GILMAN_DISPLAY_SHOW_ATMOSPHERIC_WEATHER": ["display", "show_atmospheric_weather"],
-            "GILMAN_DISPLAY_SHOW_CLEARSKY_CHART": ["display", "show_clearsky_chart"],
+            "AURORA_DISPLAY_FORECAST_DAYS": ["display", "forecast_days"],
+            "AURORA_DISPLAY_SHOW_ATMOSPHERIC_WEATHER": ["display", "show_atmospheric_weather"],
+            "AURORA_DISPLAY_SHOW_CLEARSKY_CHART": ["display", "show_clearsky_chart"],
 
-            "GILMAN_ADVANCED_REQUEST_TIMEOUT": ["advanced", "request_timeout"],
-            "GILMAN_ADVANCED_DEBUG": ["advanced", "debug"],
+            "AURORA_ADVANCED_REQUEST_TIMEOUT": ["advanced", "request_timeout"],
+            "AURORA_ADVANCED_DEBUG": ["advanced", "debug"],
         }
 
         for env_var, config_path in env_mappings.items():

@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ site.name }}{% if site.subtitle %} - {{ site.subtitle }}{% endif %}</title>
+    <link rel="icon" type="image/x-icon" href="static/images/favicon.ico">
+    <link rel="icon" type="image/png" sizes="32x32" href="static/images/favicon-32x32.png">
+    <link rel="icon" type="image/svg+xml" href="static/images/favicon.svg">
     <link rel="stylesheet" href="static/css/style.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -104,10 +107,7 @@
                     Current Sky View
                 </h2>
                 <div class="snapshot-image">
-                    <img src="{{ snapshot.path.name }}" alt="Current sky snapshot" loading="lazy">
-                    <div class="snapshot-time">
-                        Updated: {{ snapshot.file_date | format_datetime }}
-                    </div>
+                    <img src="{{ snapshot | cache_bust }}" alt="Current sky snapshot" loading="lazy">
                 </div>
 
                 <!-- Sun Information -->
@@ -250,7 +250,7 @@
                         {% if weather_data.moon_data.phase_name %}
                         <div class="sky-info-item">
                             <div class="sky-info-header">
-                                <span class="sky-info-icon" id="moon-phase-icon">🌒</span>
+                                <span class="sky-info-icon" id="moon-phase-icon">{% if weather_data.moon_data.phase_icon %}{{ weather_data.moon_data.phase_icon }}{% else %}🌙{% endif %}</span>
                                 <div class="sky-info-content">
                                     <span class="sky-info-label">Moon Phase</span>
                                     <span class="sky-info-phase">{{ weather_data.moon_data.phase_name }} ({{ weather_data.moon_data.phase_percentage }}%)</span>
@@ -357,16 +357,16 @@
                                      loading="lazy"
                                      class="modal-trigger"
                                      data-type="video"
-                                     data-src="{{ day.aurora_video.path.name }}"
+                                     data-src="{{ day.aurora_video | cache_bust }}"
                                      data-alt="Night timelapse for {{ day.day_name }}"
                                      data-title="Night Timelapse - {{ day.day_name }}">
                                 {% else %}
-                                <img src="{{ day.aurora_video.path.name }}#t=0.5"
+                                <img src="{{ day.aurora_video | cache_bust }}#t=0.5"
                                      alt="Night timelapse for {{ day.day_name }}"
                                      loading="lazy"
                                      class="modal-trigger"
                                      data-type="video"
-                                     data-src="{{ day.aurora_video.path.name }}"
+                                     data-src="{{ day.aurora_video | cache_bust }}"
                                      data-alt="Night timelapse for {{ day.day_name }}"
                                      data-title="Night Timelapse - {{ day.day_name }}">
                                 {% endif %}
@@ -392,16 +392,16 @@
                                      loading="lazy"
                                      class="modal-trigger"
                                      data-type="video"
-                                     data-src="{{ day.cloud_video.path.name }}"
+                                     data-src="{{ day.cloud_video | cache_bust }}"
                                      data-alt="Day timelapse for {{ day.day_name }}"
                                      data-title="Day Timelapse - {{ day.day_name }}">
                                 {% else %}
-                                <img src="{{ day.cloud_video.path.name }}#t=0.5"
+                                <img src="{{ day.cloud_video | cache_bust }}#t=0.5"
                                      alt="Day timelapse for {{ day.day_name }}"
                                      loading="lazy"
                                      class="modal-trigger"
                                      data-type="video"
-                                     data-src="{{ day.cloud_video.path.name }}"
+                                     data-src="{{ day.cloud_video | cache_bust }}"
                                      data-alt="Day timelapse for {{ day.day_name }}"
                                      data-title="Day Timelapse - {{ day.day_name }}">
                                 {% endif %}
@@ -421,12 +421,12 @@
                                 <h4>Space Weather History</h4>
                             </div>
                             <div class="image-container">
-                                <img src="{{ day.spaceweather_image.path.name }}"
+                                <img src="{{ day.spaceweather_image | cache_bust }}"
                                      alt="Space weather history for {{ day.day_name }}"
                                      loading="lazy"
                                      class="modal-trigger"
                                      data-type="image"
-                                     data-src="{{ day.spaceweather_image.path.name }}"
+                                     data-src="{{ day.spaceweather_image | cache_bust }}"
                                      data-alt="Space weather history for {{ day.day_name }}"
                                      data-title="Space Weather History - {{ day.day_name }}">
                             </div>
