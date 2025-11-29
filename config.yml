@@ -1,0 +1,70 @@
+# Gilman Skywatch Archive Configuration
+# This file contains all configurable settings for the website generator
+
+# Site Configuration
+site:
+  name: "Gilman Skywatch Archive"
+  subtitle: "Gilman, WI Northern Lights & Sky Timelapse Observatory"
+  description: "Static HTML website generator for Gilman, WI Aurora timelapse archive"
+  author: "Gilman Skywatch"
+  email: "admin@gilman-skywatch.local"
+
+# Location Configuration (used for astronomical calculations)
+location:
+  name: "Gilman, Wisconsin"
+  latitude: 45.17
+  longitude: -90.82
+  timezone: "America/Chicago"
+
+# API Configuration
+api_keys:
+  # OpenWeatherMap API key for atmospheric weather forecasts
+  # Get your free API key at: https://openweathermap.org/api
+  openweathermap: # Replace with your actual API key or set environment variable
+
+# Data Sources
+data_sources:
+  # NOAA Space Weather Prediction Center
+  noaa:
+    current_kp_url: "https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json"
+    kp_forecast_url: "https://services.swpc.noaa.gov/products/noaa-planetary-k-index-forecast.json"
+    forecast_url: "https://services.swpc.noaa.gov/text/3-day-forecast.txt"
+    solar_wind_url: "https://services.swpc.noaa.gov/json/dscovr/dscovr_mag_1s.json"
+
+  # Clear Sky Chart
+  clearsky:
+    base_url: "https://www.cleardarksky.com/c/"
+    station: "LtBlrTsWIcsk.gif"
+    title: "Clear Sky Chart for Taylor County, WI"
+
+# Display Settings
+display:
+  # Number of days to show in the forecast
+  forecast_days: 3
+
+  # Time format for displays
+  time_format: "%Y-%m-%d %I:%M %p"
+
+  # Date format for displays
+  date_format: "%B %d, %Y"
+
+  # Show atmospheric weather section (requires OpenWeatherMap API key)
+  show_atmospheric_weather: true
+
+  # Show Clear Sky chart
+  show_clearsky_chart: true
+
+# Advanced Settings
+advanced:
+  # Request timeout in seconds
+  request_timeout: 15
+
+  # User agent for API requests
+  user_agent: "Gilman Skywatch Archive (Educational/Non-commercial; admin@gilman-skywatch.local)"
+
+  # Enable debug logging
+  debug: false
+
+# Environment Variable Overrides
+# You can override any setting using environment variables with the format:
+# AURORA_SITE_NAME, AURORA_LOCATION_LATITUDE, AURORA_API_KEYS_OPENWEATHERMAP, etc.
