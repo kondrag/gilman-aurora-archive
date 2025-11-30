@@ -352,7 +352,7 @@
                             </div>
                             <div class="image-container">
                                 {% if day.aurora_video.thumbnail_path %}
-                                <img src="{{ day.aurora_video.thumbnail_path }}"
+                                <img src="{{ day.aurora_video.thumbnail_path | cache_bust_thumbnail }}"
                                      alt="Night timelapse for {{ day.day_name }}"
                                      loading="lazy"
                                      class="modal-trigger"
@@ -387,7 +387,7 @@
                             </div>
                             <div class="image-container">
                                 {% if day.cloud_video.thumbnail_path %}
-                                <img src="{{ day.cloud_video.thumbnail_path }}"
+                                <img src="{{ day.cloud_video.thumbnail_path | cache_bust_thumbnail }}"
                                      alt="Day timelapse for {{ day.day_name }}"
                                      loading="lazy"
                                      class="modal-trigger"

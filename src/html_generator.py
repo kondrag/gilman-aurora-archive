@@ -114,6 +114,44 @@ class HTMLGenerator:
             else:
                 return f"{media_file.path}?v={cache_bust}"
 
+        def cache_bust_thumbnail_filter(thumbnail_path) -> str:
+            """Add cache-busting parameter to thumbnail paths."""
+            if not thumbnail_path:
+                return ""
+
+            try:
+                # Convert to string path
+                path_str = str(thumbnail_path)
+
+                # Get the actual file path to check modification time
+                if hasattr(thumbnail_path, 'name'):
+                    # It's a Path object, try to get modification time
+                    full_path = self.static_dir.parent / thumbnail_path
+                    if full_path.exists():
+                        import os
+                        cache_bust = int(os.path.getmtime(full_path))
+                        return f"{thumbnail_path}?v={cache_bust}"
+                    else:
+                        # Fallback: use current timestamp
+                        import time
+                        cache_bust = int(time.time())
+                        return f"{thumbnail_path}?v={cache_bust}"
+                else:
+                    # It's already a string path
+                    full_path = self.static_dir.parent / thumbnail_path
+                    if full_path.exists():
+                        import os
+                        cache_bust = int(os.path.getmtime(full_path))
+                        return f"{thumbnail_path}?v={cache_bust}"
+                    else:
+                        # Fallback: use current timestamp
+                        import time
+                        cache_bust = int(time.time())
+                        return f"{thumbnail_path}?v={cache_bust}"
+            except Exception:
+                # If anything goes wrong, return the path without cache busting
+                return str(thumbnail_path)
+
         def get_moon_phase_icon(phase_decimal: float = None, phase_name: str = None) -> str:
             """Get Unicode moon phase icon based on phase decimal or phase name."""
             if phase_decimal is not None:
@@ -166,6 +204,7 @@ class HTMLGenerator:
         self.env.filters['round'] = round_filter
         self.env.filters['truncate'] = safe_truncate
         self.env.filters['cache_bust'] = cache_buster_filter
+        self.env.filters['cache_bust_thumbnail'] = cache_bust_thumbnail_filter
         self.env.filters['moon_phase_icon'] = get_moon_phase_icon
 
         # Store reference for use in template data
