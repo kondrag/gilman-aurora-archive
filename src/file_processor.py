@@ -4,11 +4,12 @@ File processor for scanning and categorizing Aurora media files.
 
 import os
 import re
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass
 from dateutil import parser as date_parser
+from zoneinfo import ZoneInfo
 import logging
 
 logger = logging.getLogger(__name__)
@@ -73,6 +74,40 @@ class FileProcessor:
                     return day
 
         return None
+
+    def _get_date_for_day(self, day_name: str, reference_date: datetime = None) -> datetime:
+        """
+        Calculate the most recent occurrence of a given day name.
+
+        This ensures that day names (Monday, Tuesday, etc.) are mapped to the
+        correct calendar dates, independent of file modification timestamps.
+
+        Args:
+            day_name: Name of the day (Monday, Tuesday, etc.)
+            reference_date: Reference date for calculation (defaults to now in configured timezone)
+
+        Returns:
+            datetime object representing the date for the given day name
+        """
+        if reference_date is None:
+            # Use configured timezone for reference date
+            from config import get_config
+            from zoneinfo import ZoneInfo
+            config = get_config()
+            tz = ZoneInfo(config.get_timezone())
+            reference_date = datetime.now(tz)
+
+        day_index = self.DAYS_ORDER.index(day_name)
+        # Convert to Monday=0 format (datetime.weekday() returns Monday=0)
+        reference_index = reference_date.weekday()
+
+        # Calculate how many days to go back to reach the target day
+        days_back = (reference_index - day_index + 7) % 7
+
+        # Return the date at midnight for the target day
+        target_date = reference_date.replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=days_back)
+
+        return target_date
 
     def _determine_file_type(self, filename: str) -> Optional[str]:
         """Determine file type from filename."""
@@ -158,23 +193,31 @@ class FileProcessor:
         return media_files
 
     def _group_files_by_day(self, media_files: List[MediaFile]) -> Dict[str, DayMedia]:
-        """Group media files by day of the week."""
+        """Group media files by day of the week using proper semantic dates."""
         days_media = {}
         current_snapshot = None
 
-        # First pass: handle snapshot and initialize days
+        # Get unique days from media files for initialization
+        unique_days = set()
+        for media_file in media_files:
+            if media_file.day:
+                unique_days.add(media_file.day)
+
+        # Initialize days with proper semantic dates
+        for day_name in self.DAYS_ORDER:
+            if day_name in unique_days:
+                # Use semantic day date calculation instead of file timestamp
+                semantic_date = self._get_date_for_day(day_name)
+                days_media[day_name] = DayMedia(
+                    date=semantic_date,
+                    day_name=day_name
+                )
+
+        # Assign media to days and handle snapshot
         for media_file in media_files:
             if media_file.type == 'snapshot':
                 current_snapshot = media_file
-            elif media_file.day:
-                days_media[media_file.day] = DayMedia(
-                    date=media_file.file_date,
-                    day_name=media_file.day
-                )
-
-        # Second pass: assign media to days
-        for media_file in media_files:
-            if media_file.day and media_file.day in days_media:
+            elif media_file.day and media_file.day in days_media:
                 day_media = days_media[media_file.day]
 
                 if media_file.type == 'aurora':
@@ -191,11 +234,11 @@ class FileProcessor:
         return days_media
 
     def _sort_days_by_recency(self, days_media: Dict[str, DayMedia]) -> List[DayMedia]:
-        """Sort days by recency (most recent first)."""
+        """Sort days by recency (most recent first) using semantic day dates."""
         # Filter out the snapshot key
         day_items = [(k, v) for k, v in days_media.items() if k != '_snapshot']
 
-        # Sort by file date (most recent first)
+        # Sort by semantic day date (most recent first)
         day_items.sort(key=lambda x: x[1].date, reverse=True)
 
         return [day_media for _, day_media in day_items]
