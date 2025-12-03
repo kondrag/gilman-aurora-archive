@@ -19,6 +19,11 @@ from astral import LocationInfo
 from astral.sun import sun
 from astral.moon import moonrise, moonset, phase
 
+# Import astroplan for accurate moon illumination calculations
+from astroplan.moon import moon_illumination
+from astropy.time import Time
+import astropy.units as u
+
 class WeatherFetcher:
     """Fetches space weather data from NOAA APIs and web services."""
 
@@ -36,57 +41,26 @@ class WeatherFetcher:
 
         # Location configuration from config file
         self.location_name = self.config.get("location.name", "Gilman, Wisconsin")
-        self.gilman_lat = self.config.get_latitude()
-        self.gilman_lon = self.config.get_longitude()
+        self.site_lat = self.config.get_latitude()
+        self.site_lon = self.config.get_longitude()
         self.timezone = self.config.get_timezone()
 
-        # Gilman, WI location for sunrise/sunset calculations
         try:
-            self.gilman_location = LocationInfo(
+            self.site_location = LocationInfo(
                 self.location_name.split(',')[0].strip(),
                 self.location_name.split(',')[1].strip() if ',' in self.location_name else "",
                 self.timezone,
-                self.gilman_lat,
-                self.gilman_lon
+                self.site_lat,
+                self.site_lon
             )
         except Exception as e:
             logger.warning(f"Failed to initialize location in astral: {e}")
-            self.gilman_location = None
-
-    def _get_sunrise_sunset_fallback(self, target_date: datetime) -> Dict[str, Optional[datetime]]:
-        """Fallback sunrise/sunset calculation using approximate times."""
-        # Fallback to approximate times
-        month = target_date.month
-        if month in [11, 12, 1, 2]:  # Winter months
-            sunrise_hour = 7.5  # 7:30 AM CST
-            sunset_hour = 16.5   # 4:30 PM CST
-        else:  # Summer months
-            sunrise_hour = 6.5   # 6:30 AM CDT
-            sunset_hour = 19.5   # 7:30 PM CDT
-
-        # Convert to datetime objects
-        sunrise = target_date.replace(hour=int(sunrise_hour), minute=int((sunrise_hour % 1) * 60), second=0, microsecond=0)
-        sunset = target_date.replace(hour=int(sunset_hour), minute=int((sunset_hour % 1) * 60), second=0, microsecond=0)
-
-        return {
-            'sunrise': sunrise,
-            'sunset': sunset,
-            'civil_dawn': None,
-            'civil_dusk': None,
-            'civil_dawn_tomorrow': None,
-            'nautical_dawn': None,
-            'nautical_dusk': None,
-            'nautical_dawn_tomorrow': None,
-            'astronomical_dawn': None,
-            'astronomical_dusk': None,
-            'astronomical_dawn_tomorrow': None,
-            'method': 'approximate'
-        }
+            self.site_location = None
 
     def _get_sunrise_sunset(self, target_date: datetime) -> Dict[str, Optional[datetime]]:
-        """Get precise sunrise and sunset times for Gilman, WI."""
+        """Get precise sunrise and sunset times for site."""
         # Use astral for precise calculations
-        s = sun(self.gilman_location.observer, date=target_date.date())
+        s = sun(self.site_location.observer, date=target_date.date())
 
         # Calculate twilight times using solar depression angles
         # Civil twilight: 6° below horizon (suitable for most outdoor activities)
@@ -95,15 +69,15 @@ class WeatherFetcher:
         from astral import Depression
 
         # Get dawn and dusk times for different solar depressions
-        civil = sun(self.gilman_location.observer, date=target_date.date(), dawn_dusk_depression=Depression.CIVIL)
-        nautical = sun(self.gilman_location.observer, date=target_date.date(), dawn_dusk_depression=Depression.NAUTICAL)
-        astronomical = sun(self.gilman_location.observer, date=target_date.date(), dawn_dusk_depression=Depression.ASTRONOMICAL)
+        civil = sun(self.site_location.observer, date=target_date.date(), dawn_dusk_depression=Depression.CIVIL)
+        nautical = sun(self.site_location.observer, date=target_date.date(), dawn_dusk_depression=Depression.NAUTICAL)
+        astronomical = sun(self.site_location.observer, date=target_date.date(), dawn_dusk_depression=Depression.ASTRONOMICAL)
 
         # Get tomorrow's dawn times for twilight end calculations
         tomorrow = target_date + timedelta(days=1)
-        civil_tomorrow = sun(self.gilman_location.observer, date=tomorrow.date(), dawn_dusk_depression=Depression.CIVIL)
-        nautical_tomorrow = sun(self.gilman_location.observer, date=tomorrow.date(), dawn_dusk_depression=Depression.NAUTICAL)
-        astronomical_tomorrow = sun(self.gilman_location.observer, date=tomorrow.date(), dawn_dusk_depression=Depression.ASTRONOMICAL)
+        civil_tomorrow = sun(self.site_location.observer, date=tomorrow.date(), dawn_dusk_depression=Depression.CIVIL)
+        nautical_tomorrow = sun(self.site_location.observer, date=tomorrow.date(), dawn_dusk_depression=Depression.NAUTICAL)
+        astronomical_tomorrow = sun(self.site_location.observer, date=tomorrow.date(), dawn_dusk_depression=Depression.ASTRONOMICAL)
 
         # Fix astronomical dusk if it's on the wrong day
         # Astronomical dusk should always be after sunset on the same day
@@ -135,16 +109,21 @@ class WeatherFetcher:
         }
 
     def _get_moon_data(self, target_date: datetime) -> Dict[str, Any]:
-        """Get moon rise, moon set, and moon phase for Gilman, WI."""
-            # Use astral for moon calculations
-        moon_rise = moonrise(self.gilman_location.observer, date=target_date.date())
-        moon_set = moonset(self.gilman_location.observer, date=target_date.date())
+        """Get moon rise, moon set, and moon phase for site."""
+        # Use astral for moon calculations (rise/set times)
+        moon_rise = moonrise(self.site_location.observer, date=target_date.date())
+        moon_set = moonset(self.site_location.observer, date=target_date.date())
 
-        # Get moon phase (0-1, where 0 is new moon, 0.5 is full moon)
+        # Use astroplan for accurate moon illumination calculation
+        time = Time(target_date)
+        illumination_fraction = moon_illumination(time)
+        illumination_percentage = illumination_fraction * 100
+
+        # Also get moon phase for naming purposes from astral
         raw_phase_value = phase(target_date.date())
         phase_value = raw_phase_value % 1  # Normalize to 0-1 range
 
-        # Determine moon phase name
+        # Determine moon phase name based on actual phase
         if phase_value < 0.03 or phase_value > 0.97:
             phase_name = "New Moon"
         elif phase_value < 0.22:
@@ -166,10 +145,11 @@ class WeatherFetcher:
             'moonrise': moon_rise,
             'moonset': moon_set,
             'phase_name': phase_name,
-            'phase_percentage': round(phase_value * 100, 1),
+            'phase_percentage': round(illumination_percentage, 1),
             'phase_decimal': round(phase_value, 3),
-            'method': 'astral'
+            'method': 'astroplan'
         }
+
 
     def _get_fallback_data(self) -> Dict[str, Any]:
         """Fallback data when network fails."""
@@ -654,7 +634,7 @@ class WeatherFetcher:
             # Generate forecast for each day
             for day_idx in range(min(3, len(dates))):
                 if day_idx in daily_kp_values and daily_kp_values[day_idx]:
-                    # Find peak nighttime Kp for Gilman, WI
+                    # Find peak nighttime Kp
                     night_peak_kp = self._find_nighttime_peak_kp(daily_kp_values[day_idx], current_date, day_idx)
 
                     # Calculate date for this forecast day
@@ -675,7 +655,7 @@ class WeatherFetcher:
             return None
 
     def _find_nighttime_peak_kp(self, kp_values: List[tuple], base_date: datetime, day_offset: int) -> float:
-        """Find the peak Kp value during nighttime hours for Gilman, WI."""
+        """Find the peak Kp value during nighttime hours for site"""
         peak_kp = 0.0
 
         # Calculate forecast date
@@ -728,7 +708,7 @@ class WeatherFetcher:
         return peak_kp
 
     def _get_atmospheric_forecast(self) -> Dict[str, Any]:
-        """Get 3-day atmospheric weather forecast for Gilman, WI."""
+        """Get 3-day atmospheric weather forecast for site."""
         if self.skip_network:
             logger.info("Skipping atmospheric weather request (offline mode)")
             return self._get_fallback_atmospheric_forecast()
@@ -779,8 +759,8 @@ class WeatherFetcher:
         """Fetch atmospheric weather forecast from OpenWeatherMap API."""
         try:
             # Construct OpenWeatherMap API URL
-            lat = self.gilman_lat
-            lon = self.gilman_lon
+            lat = self.site_lat
+            lon = self.site_lon
             url = f"https://api.openweathermap.org/data/2.5/forecast"
 
             params = {
@@ -915,8 +895,8 @@ class WeatherFetcher:
         """Fetch current weather conditions from OpenWeatherMap API."""
         try:
             # Construct OpenWeatherMap current weather API URL
-            lat = self.gilman_lat
-            lon = self.gilman_lon
+            lat = self.site_lat
+            lon = self.site_lon
             url = f"https://api.openweathermap.org/data/2.5/weather"
 
             params = {
