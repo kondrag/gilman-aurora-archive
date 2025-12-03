@@ -15,14 +15,9 @@ from config import get_config
 logger = logging.getLogger(__name__)
 
 # Import astral for precise sunrise/sunset calculations
-try:
-    from astral import LocationInfo
-    from astral.sun import sun
-    from astral.moon import moonrise, moonset, phase
-    ASTRAL_AVAILABLE = True
-except ImportError:
-    ASTRAL_AVAILABLE = False
-    logger.warning("Astral library not available, using fallback sunrise/sunset times")
+from astral import LocationInfo
+from astral.sun import sun
+from astral.moon import moonrise, moonset, phase
 
 class WeatherFetcher:
     """Fetches space weather data from NOAA APIs and web services."""
@@ -46,18 +41,17 @@ class WeatherFetcher:
         self.timezone = self.config.get_timezone()
 
         # Gilman, WI location for sunrise/sunset calculations
-        self.gilman_location = None
-        if ASTRAL_AVAILABLE:
-            try:
-                self.gilman_location = LocationInfo(
-                    self.location_name.split(',')[0].strip(),
-                    self.location_name.split(',')[1].strip() if ',' in self.location_name else "",
-                    self.timezone,
-                    self.gilman_lat,
-                    self.gilman_lon
-                )
-            except Exception as e:
-                logger.warning(f"Failed to initialize location in astral: {e}")
+        try:
+            self.gilman_location = LocationInfo(
+                self.location_name.split(',')[0].strip(),
+                self.location_name.split(',')[1].strip() if ',' in self.location_name else "",
+                self.timezone,
+                self.gilman_lat,
+                self.gilman_lon
+            )
+        except Exception as e:
+            logger.warning(f"Failed to initialize location in astral: {e}")
+            self.gilman_location = None
 
     def _get_sunrise_sunset_fallback(self, target_date: datetime) -> Dict[str, Optional[datetime]]:
         """Fallback sunrise/sunset calculation using approximate times."""
@@ -91,122 +85,91 @@ class WeatherFetcher:
 
     def _get_sunrise_sunset(self, target_date: datetime) -> Dict[str, Optional[datetime]]:
         """Get precise sunrise and sunset times for Gilman, WI."""
-        if not ASTRAL_AVAILABLE or not self.gilman_location:
-            return self._get_sunrise_sunset_fallback(target_date)
+        # Use astral for precise calculations
+        s = sun(self.gilman_location.observer, date=target_date.date())
 
-        try:
-            # Use astral for precise calculations
-            s = sun(self.gilman_location.observer, date=target_date.date())
+        # Calculate twilight times using solar depression angles
+        # Civil twilight: 6° below horizon (suitable for most outdoor activities)
+        # Nautical twilight: 12° below horizon (navigation by stars possible)
+        # Astronomical twilight: 18° below horizon (full darkness, ideal for astronomy)
+        from astral import Depression
 
-            # Calculate twilight times using solar depression angles
-            # Civil twilight: 6° below horizon (suitable for most outdoor activities)
-            # Nautical twilight: 12° below horizon (navigation by stars possible)
-            # Astronomical twilight: 18° below horizon (full darkness, ideal for astronomy)
-            from astral import Depression
+        # Get dawn and dusk times for different solar depressions
+        civil = sun(self.gilman_location.observer, date=target_date.date(), dawn_dusk_depression=Depression.CIVIL)
+        nautical = sun(self.gilman_location.observer, date=target_date.date(), dawn_dusk_depression=Depression.NAUTICAL)
+        astronomical = sun(self.gilman_location.observer, date=target_date.date(), dawn_dusk_depression=Depression.ASTRONOMICAL)
 
-            # Get dawn and dusk times for different solar depressions
-            civil = sun(self.gilman_location.observer, date=target_date.date(), dawn_dusk_depression=Depression.CIVIL)
-            nautical = sun(self.gilman_location.observer, date=target_date.date(), dawn_dusk_depression=Depression.NAUTICAL)
-            astronomical = sun(self.gilman_location.observer, date=target_date.date(), dawn_dusk_depression=Depression.ASTRONOMICAL)
+        # Get tomorrow's dawn times for twilight end calculations
+        tomorrow = target_date + timedelta(days=1)
+        civil_tomorrow = sun(self.gilman_location.observer, date=tomorrow.date(), dawn_dusk_depression=Depression.CIVIL)
+        nautical_tomorrow = sun(self.gilman_location.observer, date=tomorrow.date(), dawn_dusk_depression=Depression.NAUTICAL)
+        astronomical_tomorrow = sun(self.gilman_location.observer, date=tomorrow.date(), dawn_dusk_depression=Depression.ASTRONOMICAL)
 
-            # Get tomorrow's dawn times for twilight end calculations
-            tomorrow = target_date + timedelta(days=1)
-            civil_tomorrow = sun(self.gilman_location.observer, date=tomorrow.date(), dawn_dusk_depression=Depression.CIVIL)
-            nautical_tomorrow = sun(self.gilman_location.observer, date=tomorrow.date(), dawn_dusk_depression=Depression.NAUTICAL)
-            astronomical_tomorrow = sun(self.gilman_location.observer, date=tomorrow.date(), dawn_dusk_depression=Depression.ASTRONOMICAL)
+        # Fix astronomical dusk if it's on the wrong day
+        # Astronomical dusk should always be after sunset on the same day
+        sunset_time = s['sunset']
+        astro_dusk = astronomical['dusk']
 
-            # Fix astronomical dusk if it's on the wrong day
-            # Astronomical dusk should always be after sunset on the same day
-            sunset_time = s['sunset']
-            astro_dusk = astronomical['dusk']
+        # If astronomical dusk is before sunset, it's actually from the previous day
+        # In that case, we need to add 24 hours to make it the correct dusk for today
+        if astro_dusk and sunset_time and astro_dusk < sunset_time:
+            # This astronomical dusk is from the previous day, add 24 hours
+            astro_dusk = astro_dusk + timedelta(days=1)
+            logger.info(f"Corrected astronomical dusk from previous day to: {astro_dusk}")
 
-            # If astronomical dusk is before sunset, it's actually from the previous day
-            # In that case, we need to add 24 hours to make it the correct dusk for today
-            if astro_dusk and sunset_time and astro_dusk < sunset_time:
-                # This astronomical dusk is from the previous day, add 24 hours
-                astro_dusk = astro_dusk + timedelta(days=1)
-                logger.info(f"Corrected astronomical dusk from previous day to: {astro_dusk}")
-
-            # The times from astral are already timezone-aware (UTC for America/Chicago)
-            # No need to convert them again
-            return {
-                'sunrise': s['sunrise'],
-                'sunset': s['sunset'],
-                'civil_dawn': civil['dawn'],
-                'civil_dusk': civil['dusk'],
-                'civil_dawn_tomorrow': civil_tomorrow['dawn'],
-                'nautical_dawn': nautical['dawn'],
-                'nautical_dusk': nautical['dusk'],
-                'nautical_dawn_tomorrow': nautical_tomorrow['dawn'],
-                'astronomical_dawn': astronomical['dawn'],
-                'astronomical_dusk': astro_dusk,  # Use the corrected astronomical dusk
-                'astronomical_dawn_tomorrow': astronomical_tomorrow['dawn'],
-                'method': 'astral'
-            }
-        except Exception as e:
-            logger.error(f"Error calculating sunrise/sunset with astral: {e}")
-            # Fallback to approximate times
-            return self._get_sunrise_sunset_fallback(target_date)
+        # The times from astral are already timezone-aware (UTC for America/Chicago)
+        # No need to convert them again
+        return {
+            'sunrise': s['sunrise'],
+            'sunset': s['sunset'],
+            'civil_dawn': civil['dawn'],
+            'civil_dusk': civil['dusk'],
+            'civil_dawn_tomorrow': civil_tomorrow['dawn'],
+            'nautical_dawn': nautical['dawn'],
+            'nautical_dusk': nautical['dusk'],
+            'nautical_dawn_tomorrow': nautical_tomorrow['dawn'],
+            'astronomical_dawn': astronomical['dawn'],
+            'astronomical_dusk': astro_dusk,  # Use the corrected astronomical dusk
+            'astronomical_dawn_tomorrow': astronomical_tomorrow['dawn'],
+            'method': 'astral'
+        }
 
     def _get_moon_data(self, target_date: datetime) -> Dict[str, Any]:
         """Get moon rise, moon set, and moon phase for Gilman, WI."""
-        if not ASTRAL_AVAILABLE or not self.gilman_location:
-            # Fallback to basic data
-            return {
-                'moonrise': None,
-                'moonset': None,
-                'phase_name': None,
-                'phase_percentage': None,
-                'phase_decimal': None,
-                'method': 'fallback'
-            }
-
-        try:
             # Use astral for moon calculations
-            moon_rise = moonrise(self.gilman_location.observer, date=target_date.date())
-            moon_set = moonset(self.gilman_location.observer, date=target_date.date())
+        moon_rise = moonrise(self.gilman_location.observer, date=target_date.date())
+        moon_set = moonset(self.gilman_location.observer, date=target_date.date())
 
-            # Get moon phase (0-1, where 0 is new moon, 0.5 is full moon)
-            raw_phase_value = phase(target_date.date())
-            phase_value = raw_phase_value % 1  # Normalize to 0-1 range
+        # Get moon phase (0-1, where 0 is new moon, 0.5 is full moon)
+        raw_phase_value = phase(target_date.date())
+        phase_value = raw_phase_value % 1  # Normalize to 0-1 range
 
-            # Determine moon phase name
-            if phase_value < 0.03 or phase_value > 0.97:
-                phase_name = "New Moon"
-            elif phase_value < 0.22:
-                phase_name = "Waxing Crescent"
-            elif phase_value < 0.28:
-                phase_name = "First Quarter"
-            elif phase_value < 0.47:
-                phase_name = "Waxing Gibbous"
-            elif phase_value < 0.53:
-                phase_name = "Full Moon"
-            elif phase_value < 0.72:
-                phase_name = "Waning Gibbous"
-            elif phase_value < 0.78:
-                phase_name = "Last Quarter"
-            else:
-                phase_name = "Waning Crescent"
+        # Determine moon phase name
+        if phase_value < 0.03 or phase_value > 0.97:
+            phase_name = "New Moon"
+        elif phase_value < 0.22:
+            phase_name = "Waxing Crescent"
+        elif phase_value < 0.28:
+            phase_name = "First Quarter"
+        elif phase_value < 0.47:
+            phase_name = "Waxing Gibbous"
+        elif phase_value < 0.53:
+            phase_name = "Full Moon"
+        elif phase_value < 0.72:
+            phase_name = "Waning Gibbous"
+        elif phase_value < 0.78:
+            phase_name = "Last Quarter"
+        else:
+            phase_name = "Waning Crescent"
 
-            return {
-                'moonrise': moon_rise,
-                'moonset': moon_set,
-                'phase_name': phase_name,
-                'phase_percentage': round(phase_value * 100, 1),
-                'phase_decimal': round(phase_value, 3),
-                'method': 'astral'
-            }
-        except Exception as e:
-            logger.error(f"Error calculating moon data with astral: {e}")
-            # Fallback to basic data
-            return {
-                'moonrise': None,
-                'moonset': None,
-                'phase_name': None,
-                'phase_percentage': None,
-                'phase_decimal': None,
-                'method': 'fallback'
-            }
+        return {
+            'moonrise': moon_rise,
+            'moonset': moon_set,
+            'phase_name': phase_name,
+            'phase_percentage': round(phase_value * 100, 1),
+            'phase_decimal': round(phase_value, 3),
+            'method': 'astral'
+        }
 
     def _get_fallback_data(self) -> Dict[str, Any]:
         """Fallback data when network fails."""
