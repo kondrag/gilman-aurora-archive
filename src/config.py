@@ -2,11 +2,11 @@
 Configuration management for Aurora Skywatch Archive.
 """
 
+import logging
 import os
 import yaml
 from pathlib import Path
 from typing import Dict, Any, Optional
-import logging
 
 logger = logging.getLogger(__name__)
 

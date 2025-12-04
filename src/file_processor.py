@@ -2,15 +2,16 @@
 File processor for scanning and categorizing Aurora media files.
 """
 
+import logging
 import os
 import re
+from dataclasses import dataclass
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
-from dataclasses import dataclass
-from dateutil import parser as date_parser
 from zoneinfo import ZoneInfo
-import logging
+
+from config import get_config
 
 logger = logging.getLogger(__name__)
 
@@ -91,8 +92,6 @@ class FileProcessor:
         """
         if reference_date is None:
             # Use configured timezone for reference date
-            from config import get_config
-            from zoneinfo import ZoneInfo
             config = get_config()
             tz = ZoneInfo(config.get_timezone())
             reference_date = datetime.now(tz)

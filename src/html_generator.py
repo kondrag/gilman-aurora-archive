@@ -2,12 +2,15 @@
 HTML generator using Jinja2 templates.
 """
 
+import logging
 import os
+import shutil
+import time
 from datetime import datetime
+from jinja2 import Environment, FileSystemLoader, Template
 from pathlib import Path
 from typing import Dict, List, Any, Optional
-from jinja2 import Environment, FileSystemLoader, Template
-import logging
+from zoneinfo import ZoneInfo
 
 from file_processor import DayMedia, MediaFile
 from utils import format_file_size
@@ -46,7 +49,6 @@ class HTMLGenerator:
                     dt = dt_str
 
                 # Convert to local time using configured timezone
-                from zoneinfo import ZoneInfo
                 gilman_tz = ZoneInfo(self.config.get_timezone())
 
                 # If datetime is timezone-aware, convert to Chicago time
@@ -128,24 +130,20 @@ class HTMLGenerator:
                     # It's a Path object, try to get modification time
                     full_path = self.static_dir.parent / thumbnail_path
                     if full_path.exists():
-                        import os
                         cache_bust = int(os.path.getmtime(full_path))
                         return f"{thumbnail_path}?v={cache_bust}"
                     else:
                         # Fallback: use current timestamp
-                        import time
                         cache_bust = int(time.time())
                         return f"{thumbnail_path}?v={cache_bust}"
                 else:
                     # It's already a string path
                     full_path = self.static_dir.parent / thumbnail_path
                     if full_path.exists():
-                        import os
                         cache_bust = int(os.path.getmtime(full_path))
                         return f"{thumbnail_path}?v={cache_bust}"
                     else:
                         # Fallback: use current timestamp
-                        import time
                         cache_bust = int(time.time())
                         return f"{thumbnail_path}?v={cache_bust}"
             except Exception:
@@ -256,8 +254,6 @@ class HTMLGenerator:
 
         try:
             # Copy entire static directory structure
-            import shutil
-
             if output_static_dir.exists():
                 shutil.rmtree(output_static_dir)
             shutil.copytree(self.static_dir, output_static_dir)

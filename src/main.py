@@ -3,10 +3,10 @@
 Main entry point for Simple Aurora Archive static website generator.
 """
 
-import sys
-import os
 import argparse
+import os
 import logging
+import sys
 from pathlib import Path
 
 from file_processor import FileProcessor

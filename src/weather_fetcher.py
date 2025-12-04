@@ -1,21 +1,18 @@
 """
 Weather fetcher for NOAA space weather data.
 """
-
+import json
+import logging
+import re
 import requests
 from datetime import datetime, timezone, timedelta
-from typing import Dict, List, Optional, Any
-import logging
-import json
-import re
-import os
 from pathlib import Path
+from typing import Dict, List, Optional, Any
+from zoneinfo import ZoneInfo
 from config import get_config
 
-logger = logging.getLogger(__name__)
-
 # Import astral for precise sunrise/sunset calculations
-from astral import LocationInfo
+from astral import Depression, LocationInfo
 from astral.sun import sun
 from astral.moon import moonrise, moonset, phase
 
@@ -26,6 +23,8 @@ import astropy.units as u
 
 SYNODIC_PERIOD = 29.530588853  # Average synodic month length in days
 SIDERNAL_PERIOD = 27.321661  # Average sidereal month length in days
+
+logger = logging.getLogger(__name__)
 
 class WeatherFetcher:
     """Fetches space weather data from NOAA APIs and web services."""
@@ -65,7 +64,6 @@ class WeatherFetcher:
         # Civil twilight: 6° below horizon (suitable for most outdoor activities)
         # Nautical twilight: 12° below horizon (navigation by stars possible)
         # Astronomical twilight: 18° below horizon (full darkness, ideal for astronomy)
-        from astral import Depression
 
         # Get dawn and dusk times for different solar depressions
         civil = sun(self.site_location.observer, date=target_date.date(), dawn_dusk_depression=Depression.CIVIL)
@@ -163,7 +161,6 @@ class WeatherFetcher:
 
     def _get_fallback_forecast(self) -> List[Dict[str, Any]]:
         """Fallback forecast when network fails."""
-        from zoneinfo import ZoneInfo
         location_tz = ZoneInfo(self.config.get_timezone())
         current_date = datetime.now(location_tz)
         result = []
