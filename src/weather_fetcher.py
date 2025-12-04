@@ -24,6 +24,9 @@ from astroplan.moon import moon_illumination
 from astropy.time import Time
 import astropy.units as u
 
+SYNODIC_PERIOD = 29.530588853  # Average synodic month length in days
+SIDERNAL_PERIOD = 27.321661  # Average sidereal month length in days
+
 class WeatherFetcher:
     """Fetches space weather data from NOAA APIs and web services."""
 
@@ -45,17 +48,13 @@ class WeatherFetcher:
         self.site_lon = self.config.get_longitude()
         self.timezone = self.config.get_timezone()
 
-        try:
-            self.site_location = LocationInfo(
-                self.location_name.split(',')[0].strip(),
-                self.location_name.split(',')[1].strip() if ',' in self.location_name else "",
-                self.timezone,
-                self.site_lat,
-                self.site_lon
-            )
-        except Exception as e:
-            logger.warning(f"Failed to initialize location in astral: {e}")
-            self.site_location = None
+        self.site_location = LocationInfo(
+            self.location_name.split(',')[0].strip(),
+            self.location_name.split(',')[1].strip() if ',' in self.location_name else "",
+            self.timezone,
+            self.site_lat,
+            self.site_lon
+        )
 
     def _get_sunrise_sunset(self, target_date: datetime) -> Dict[str, Optional[datetime]]:
         """Get precise sunrise and sunset times for site."""
@@ -120,8 +119,8 @@ class WeatherFetcher:
         illumination_percentage = illumination_fraction * 100
 
         # Also get moon phase for naming purposes from astral
-        raw_phase_value = phase(target_date.date())
-        phase_value = raw_phase_value % 1  # Normalize to 0-1 range
+        moon_age = phase(target_date.date())
+        phase_value = moon_age / SIDERNAL_PERIOD  # Normalize to 0-1 range
 
         # Determine moon phase name based on actual phase
         if phase_value < 0.03 or phase_value > 0.97:
