@@ -738,6 +738,15 @@ body {
     font-size: 0.85rem;
 }
 
+/* Weather forecast icons - double the default size */
+.weather-icon {
+    font-size: 3rem;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
 .weather-source {
     font-size: 0.8rem;
     color: var(--text-dim);
@@ -1169,6 +1178,11 @@ body {
         font-size: 1rem;
         padding: 8px 16px;
     }
+
+    /* Medium weather icons on tablet devices */
+    .weather-icon {
+        font-size: 2.5rem;
+    }
 }
 
 @media (max-width: 480px) {
@@ -1188,5 +1202,10 @@ body {
     .atmospheric-weather h3,
     .clearsky-chart h3 {
         font-size: 1.1rem;
+    }
+
+    /* Smaller weather icons on mobile devices */
+    .weather-icon {
+        font-size: 2rem;
     }
 }

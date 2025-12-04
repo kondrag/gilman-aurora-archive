@@ -306,13 +306,9 @@ class HTMLGenerator:
             if not self._validate_template(template_path):
                 return False
 
-            # Load template
+            # Render template
             template = self.env.get_template("index.html")
-
-            # Prepare template data
             template_data = self._prepare_template_data(media_data, weather_data, snapshot)
-
-            # Render HTML
             html_content = template.render(**template_data)
 
             # Ensure output directory exists
