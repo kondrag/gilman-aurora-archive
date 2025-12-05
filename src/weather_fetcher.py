@@ -21,8 +21,7 @@ from astroplan.moon import moon_illumination
 from astropy.time import Time
 import astropy.units as u
 
-SYNODIC_PERIOD = 29.530588853  # Average synodic month length in days
-SIDERNAL_PERIOD = 27.321661  # Average sidereal month length in days
+ASTRAL_MOON_CYCLE_MAX = 27.99
 
 logger = logging.getLogger(__name__)
 
@@ -118,7 +117,7 @@ class WeatherFetcher:
 
         # Also get moon phase for naming purposes from astral
         moon_age = phase(target_date.date())
-        phase_value = moon_age / SIDERNAL_PERIOD  # Normalize to 0-1 range
+        phase_value = moon_age / ASTRAL_MOON_CYCLE_MAX  # Normalize to 0-1 range
 
         # Determine moon phase name based on actual phase
         if phase_value < 0.03 or phase_value > 0.97:
