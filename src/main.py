@@ -92,7 +92,6 @@ def main():
         media_data, snapshot = file_processor.process_files()
         if not media_data:
             logger.warning("No media files found in target directory")
-            return 1
 
         logger.info(f"Found {len(media_data)} days of media content")
 
