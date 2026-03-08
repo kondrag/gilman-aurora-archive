@@ -994,11 +994,26 @@ class WeatherFetcher:
         current_date = datetime.now(timezone.utc)
 
         # Get today's sunrise/sunset for the Current Sky View section
-        sun_times = self._get_sunrise_sunset(current_date)
+        try:
+            sun_times = self._get_sunrise_sunset(current_date)
+        except Exception as e:
+            logger.error(f"Failed to get sunrise/sunset times: {e}")
+            sun_times = {'sunrise': None, 'sunset': None}
 
         # Get moon data for the Current Sky View section
-        moon_data = self._get_moon_data(current_date)
-
+        try:
+            moon_data = self._get_moon_data(current_date)
+        except Exception as e:
+            logger.error(f"Failed to get moon data: {e}")
+            moon_data = {
+                'moonrise': None,
+                'moonset': None,
+                'phase_name': None,
+                'phase_percentage': None,
+                'phase_decimal': None,
+                'method': None
+            }
+            
         # Get atmospheric weather forecast
         atmospheric_forecast = self._get_atmospheric_forecast()
 
