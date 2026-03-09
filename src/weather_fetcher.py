@@ -657,7 +657,12 @@ class WeatherFetcher:
         forecast_date = base_date + timedelta(days=day_offset + 1)
 
         # Get precise sunrise/sunset times for the forecast day
-        sun_times = self._get_sunrise_sunset(forecast_date)
+        try:
+            sun_times = self._get_sunrise_sunset(forecast_date)
+        except Exception as e:
+            logger.error(f"Failed to get sunrise/sunset times: {e}")
+            sun_times = {'sunrise': None, 'sunset': None}
+
         sunrise = sun_times['sunrise']
         sunset = sun_times['sunset']
 
