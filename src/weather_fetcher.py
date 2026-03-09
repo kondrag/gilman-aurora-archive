@@ -56,24 +56,41 @@ class WeatherFetcher:
 
     def _get_sunrise_sunset(self, target_date: datetime) -> Dict[str, Optional[datetime]]:
         """Get precise sunrise and sunset times for site."""
-        # Use astral for precise calculations
-        s = sun(self.site_location.observer, date=target_date.date())
+        try:
+            # Use astral for precise calculations
+            s = sun(self.site_location.observer, date=target_date.date())
 
-        # Calculate twilight times using solar depression angles
-        # Civil twilight: 6° below horizon (suitable for most outdoor activities)
-        # Nautical twilight: 12° below horizon (navigation by stars possible)
-        # Astronomical twilight: 18° below horizon (full darkness, ideal for astronomy)
+            # Calculate twilight times using solar depression angles
+            # Civil twilight: 6° below horizon (suitable for most outdoor activities)
+            # Nautical twilight: 12° below horizon (navigation by stars possible)
+            # Astronomical twilight: 18° below horizon (full darkness, ideal for astronomy)
 
-        # Get dawn and dusk times for different solar depressions
-        civil = sun(self.site_location.observer, date=target_date.date(), dawn_dusk_depression=Depression.CIVIL)
-        nautical = sun(self.site_location.observer, date=target_date.date(), dawn_dusk_depression=Depression.NAUTICAL)
-        astronomical = sun(self.site_location.observer, date=target_date.date(), dawn_dusk_depression=Depression.ASTRONOMICAL)
+            # Get dawn and dusk times for different solar depressions
+            civil = sun(self.site_location.observer, date=target_date.date(), dawn_dusk_depression=Depression.CIVIL)
+            nautical = sun(self.site_location.observer, date=target_date.date(), dawn_dusk_depression=Depression.NAUTICAL)
+            astronomical = sun(self.site_location.observer, date=target_date.date(), dawn_dusk_depression=Depression.ASTRONOMICAL)
 
-        # Get tomorrow's dawn times for twilight end calculations
-        tomorrow = target_date + timedelta(days=1)
-        civil_tomorrow = sun(self.site_location.observer, date=tomorrow.date(), dawn_dusk_depression=Depression.CIVIL)
-        nautical_tomorrow = sun(self.site_location.observer, date=tomorrow.date(), dawn_dusk_depression=Depression.NAUTICAL)
-        astronomical_tomorrow = sun(self.site_location.observer, date=tomorrow.date(), dawn_dusk_depression=Depression.ASTRONOMICAL)
+            # Get tomorrow's dawn times for twilight end calculations
+            tomorrow = target_date + timedelta(days=1)
+            civil_tomorrow = sun(self.site_location.observer, date=tomorrow.date(), dawn_dusk_depression=Depression.CIVIL)
+            nautical_tomorrow = sun(self.site_location.observer, date=tomorrow.date(), dawn_dusk_depression=Depression.NAUTICAL)
+            astronomical_tomorrow = sun(self.site_location.observer, date=tomorrow.date(), dawn_dusk_depression=Depression.ASTRONOMICAL)
+        except Exception as e:
+            logger.error(f"Error calculating sunrise/sunset: {e}")
+            return {
+                'sunrise': None,
+                'sunset': None,
+                'civil_dawn': None,
+                'civil_dusk': None,
+                'civil_dawn_tomorrow': None,
+                'nautical_dawn': None,
+                'nautical_dusk': None,
+                'nautical_dawn_tomorrow': None,
+                'astronomical_dawn': None,
+                'astronomical_dusk': None,
+                'astronomical_dawn_tomorrow': None,
+                'method': 'astral'
+            }
 
         # Fix astronomical dusk if it's on the wrong day
         # Astronomical dusk should always be after sunset on the same day
@@ -657,11 +674,7 @@ class WeatherFetcher:
         forecast_date = base_date + timedelta(days=day_offset + 1)
 
         # Get precise sunrise/sunset times for the forecast day
-        try:
-            sun_times = self._get_sunrise_sunset(forecast_date)
-        except Exception as e:
-            logger.error(f"Failed to get sunrise/sunset times: {e}")
-            sun_times = {'sunrise': None, 'sunset': None}
+        sun_times = self._get_sunrise_sunset(forecast_date)
 
         sunrise = sun_times['sunrise']
         sunset = sun_times['sunset']
@@ -999,25 +1012,10 @@ class WeatherFetcher:
         current_date = datetime.now(timezone.utc)
 
         # Get today's sunrise/sunset for the Current Sky View section
-        try:
-            sun_times = self._get_sunrise_sunset(current_date)
-        except Exception as e:
-            logger.error(f"Failed to get sunrise/sunset times: {e}")
-            sun_times = {'sunrise': None, 'sunset': None}
+        sun_times = self._get_sunrise_sunset(current_date)
 
         # Get moon data for the Current Sky View section
-        try:
-            moon_data = self._get_moon_data(current_date)
-        except Exception as e:
-            logger.error(f"Failed to get moon data: {e}")
-            moon_data = {
-                'moonrise': None,
-                'moonset': None,
-                'phase_name': None,
-                'phase_percentage': None,
-                'phase_decimal': None,
-                'method': None
-            }
+        moon_data = self._get_moon_data(current_date)
             
         # Get atmospheric weather forecast
         atmospheric_forecast = self._get_atmospheric_forecast()
